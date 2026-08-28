@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "db" / "northstar.db"
+DB_PATH = BASE_DIR / "db" / "medigrid.db"
 DATA_DIR = BASE_DIR / "data"
 
 SCHEMA = """

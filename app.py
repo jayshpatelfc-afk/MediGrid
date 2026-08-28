@@ -104,7 +104,7 @@ def health():
 def import_summary():
     imports = db.execute("SELECT source_name, file_name, imported_at, row_count FROM source_imports ORDER BY id").fetchall()
     return jsonify({
-        "database": "northstar.db",
+        "database": "medigrid.db",
         "sources": [dict(row) for row in imports],
         "normalization": {
             "patientIds": "HIS-prefixed and bare LAB IDs are stored as MCH-0000000",

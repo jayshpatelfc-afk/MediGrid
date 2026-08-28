@@ -8,8 +8,33 @@ let conflicts = [
 const navItems = document.querySelectorAll('.nav-item');
 const views = document.querySelectorAll('.view');
 const toast = document.getElementById('toast');
+const themeToggle = document.getElementById('theme-toggle');
 let patientEvents = [];
 let currentDashboard = { occupiedBeds: { value: 0, capacity: 0, available: 0 } };
+
+function applyTheme(theme) {
+  const selectedTheme = theme === 'dark' ? 'dark' : 'light';
+  document.body.dataset.theme = selectedTheme;
+  if (themeToggle) {
+    themeToggle.setAttribute('aria-label', selectedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    themeToggle.title = selectedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    themeToggle.querySelector('.theme-toggle-thumb').textContent = selectedTheme === 'dark' ? '☾' : '☀';
+  }
+  try {
+    localStorage.setItem('medigrid-theme', selectedTheme);
+  } catch (error) {
+    console.info('Theme preference could not be saved locally.', error);
+  }
+}
+
+if (themeToggle) {
+  const savedTheme = localStorage.getItem('medigrid-theme');
+  applyTheme(savedTheme || 'light');
+  themeToggle.addEventListener('click', () => {
+    const nextTheme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+    applyTheme(nextTheme);
+  });
+}
 let queueOpenOnly = false;
 let flowFilter = 'all';
 let liveRefreshInProgress = false;
@@ -237,19 +262,16 @@ async function loadApiData() {
     document.querySelector('#lab-turnaround-value').closest('.metric-card').querySelector('.confidence').textContent = `${dashboardData.trustScores['Lab turnaround']}% TRUST`;
     document.querySelector('#discharges-recorded-value').closest('.metric-card').querySelector('.confidence').textContent = `${dashboardData.trustScores.Discharges}% TRUST`;
     document.getElementById('alert-summary').textContent = dashboardData.alerts.length ? dashboardData.alerts.map(alert => `${alert.title}: ${alert.detail}`).join(' ') : 'No active operational alerts.';
-    document.getElementById('live-date').textContent = formatLiveDate(dashboardData.updatedAt);
     document.getElementById('overview-date').textContent = formatDate(dashboardData.reportingDate);
-    document.getElementById('pipeline-checked').textContent = `Last checked ${formatLiveTime(dashboardData.updatedAt)}`;
-    document.getElementById('latest-source-time').textContent = `Checked ${formatLiveTime(dashboardData.updatedAt)} · data through ${formatDate(dashboardData.reportingDate)}`;
-    document.querySelector('.source-date strong').textContent = `${formatDate(dashboardData.reportingDate)} · imported snapshot`;
-    document.querySelector('.scenario-status strong').textContent = `Checked ${formatLiveTime(dashboardData.updatedAt)} · latest snapshot ${formatDate(dashboardData.reportingDate)}`;
+    document.querySelector('.source-date strong').textContent = formatDate(dashboardData.reportingDate);
+    document.querySelector('.scenario-status strong').textContent = `Checked ${formatLiveTime(new Date())} · snapshot ${formatDate(dashboardData.reportingDate)}`;
     document.getElementById('flow-date').value = dashboardData.reportingDate;
     renderQueue();
     renderOverviewReview();
     renderBedMap();
     renderUnitList();
     updateSimulation();
-    document.getElementById('live-status').textContent = `Live · checked ${formatLiveTime(dashboardData.updatedAt)}`;
+    updateLiveClock();
     return true;
   } catch (error) {
     document.getElementById('live-status').textContent = 'Data connection unavailable';
@@ -272,6 +294,26 @@ function formatLiveTime(value) {
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
+function updateLiveClock() {
+  const now = new Date();
+  const timeText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateText = now.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const liveStatus = document.getElementById('live-status');
+  const pipelineChecked = document.getElementById('pipeline-checked');
+  const latestSourceTime = document.getElementById('latest-source-time');
+  const liveDate = document.getElementById('live-date');
+  const overviewDate = document.getElementById('overview-date');
+  const sourceDate = document.querySelector('.source-date strong');
+
+  if (liveStatus) liveStatus.textContent = `Live · checked ${timeText}`;
+  if (pipelineChecked) pipelineChecked.textContent = `Checked ${timeText}`;
+  if (latestSourceTime) latestSourceTime.textContent = `Checked ${timeText} · ${dateText}`;
+  if (liveDate) liveDate.textContent = dateText;
+  if (overviewDate) overviewDate.textContent = dateText;
+  if (sourceDate) sourceDate.textContent = dateText;
+}
+
 function exportBrief() {
   const rows = [
     ['Metric', 'Value'],
@@ -286,7 +328,7 @@ function exportBrief() {
   const csv = rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\n');
   const link = document.createElement('a');
   link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  link.download = `northstar-brief-${currentDashboard.reportingDate}.csv`;
+  link.download = `medigrid-brief-${currentDashboard.reportingDate}.csv`;
   link.click();
   URL.revokeObjectURL(link.href);
 }
@@ -343,11 +385,13 @@ document.querySelectorAll('[data-event-filter]').forEach(button => button.addEve
 
 renderQueue();
 renderBedMap();
+updateLiveClock();
 loadApiData();
 loadPatientFlow();
 loadBottlenecks();
 loadTrustScores();
 updateSimulation();
+window.setInterval(updateLiveClock, 1000);
 window.setInterval(async () => {
   if (document.hidden) return;
   const loaded = await loadApiData();
