@@ -1,0 +1,136 @@
+Date,Ward,Total Beds,Occupied,Available,Remarks
+01-Jul-26,I.C.U.,12,6,6,approx - system was down
+01-Jul-26,Medical ICU,10,6,4,includes 1 day-care patient
+01-Jul-26,General Ward - A,30,8,22,
+01-Jul-26,General Ward B,30,6,24,includes 1 day-care patient
+01-Jul-26,Pediatrics,16,9,7,includes 1 day-care patient
+02-Jul-26,I.C.U.,12,5,7,includes 1 day-care patient
+02-Jul-26,Medical ICU,10,9,1,2 discharges pending paperwork
+02-Jul-26,General Ward - A,30,11,19,
+02-Jul-26,General Ward B,30,5,25,2 discharges pending paperwork
+02-Jul-26,Pediatrics,16,10,6,
+03-Jul-26,I.C.U.,12,7,5,verified with nursing station
+03-Jul-26,Medical ICU,10,7,,approx - system was down
+03-Jul-26,General Ward - A,30,16,14,
+03-Jul-26,General Ward B,30,9,21,count taken at 8am
+03-Jul-26,Pediatrics,16,8,8,approx - system was down
+04-Jul-26,I.C.U.,12,9,3,
+04-Jul-26,Medical ICU,10,9,1,
+04-Jul-26,General Ward - A,30,9,21,
+04-Jul-26,General Ward B,30,11,19,night shift handover count
+04-Jul-26,Pediatrics,16,6,10,night shift handover count
+05-Jul-26,I.C.U.,12,11,1,verified with nursing station
+05-Jul-26,Medical ICU,10,10,0,
+05-Jul-26,General Ward - A,30,9,21,
+05-Jul-26,General Ward B,30,10,20,verified with nursing station
+05-Jul-26,Pediatrics,16,7,9,
+06-Jul-26,I.C.U.,12,10,2,2 discharges pending paperwork
+06-Jul-26,Medical ICU,10,10,0,approx - system was down
+06-Jul-26,General Ward - A,30,10,20,approx - system was down
+06-Jul-26,General Ward B,30,13,17,approx - system was down
+06-Jul-26,Pediatrics,16,7,9,
+07-Jul-26,I.C.U.,12,9,3,
+07-Jul-26,Medical ICU,10,8,2,night shift handover count
+07-Jul-26,General Ward - A,30,10,20,
+07-Jul-26,General Ward B,30,14,16,2 discharges pending paperwork
+07-Jul-26,Pediatrics,16,12,4,
+08-Jul-26,I.C.U.,12,9,3,verified with nursing station
+08-Jul-26,Medical ICU,10,9,1,
+08-Jul-26,General Ward - A,30,10,20,
+08-Jul-26,General Ward B,30,15,15,includes 1 day-care patient
+08-Jul-26,Pediatrics,16,13,3,
+10-Jul-26,I.C.U.,12,10,2,
+10-Jul-26,Medical ICU,10,7,3,count taken at 8am
+10-Jul-26,General Ward - A,30,9,21,
+10-Jul-26,General Ward B,30,14,16,2 discharges pending paperwork
+10-Jul-26,Pediatrics,16,14,2,2 discharges pending paperwork
+11-Jul-26,I.C.U.,12,6,6,
+11-Jul-26,Medical ICU,10,6,,night shift handover count
+11-Jul-26,General Ward - A,30,9,21,
+11-Jul-26,General Ward B,30,9,21,night shift handover count
+11-Jul-26,Pediatrics,16,13,3,night shift handover count
+13-Jul-26,I.C.U.,12,12,0,
+13-Jul-26,Medical ICU,10,7,3,includes 1 day-care patient
+13-Jul-26,General Ward - A,30,9,21,
+13-Jul-26,General Ward B,30,13,17,2 discharges pending paperwork
+13-Jul-26,Pediatrics,16,13,3,
+14-Jul-26,I.C.U.,12,12,0,approx - system was down
+14-Jul-26,Medical ICU,10,9,1,
+14-Jul-26,General Ward - A,30,7,23,2 discharges pending paperwork
+14-Jul-26,General Ward B,30,12,18,verified with nursing station
+14-Jul-26,Pediatrics,16,14,2,includes 1 day-care patient
+15-Jul-26,I.C.U.,12,12,0,count taken at 8am
+15-Jul-26,Medical ICU,10,9,,approx - system was down
+15-Jul-26,General Ward - A,30,8,22,2 discharges pending paperwork
+15-Jul-26,General Ward B,30,14,16,
+15-Jul-26,Pediatrics,16,11,5,
+16-Jul-26,I.C.U.,12,12,0,
+16-Jul-26,Medical ICU,10,10,0,
+16-Jul-26,General Ward - A,30,11,19,includes 1 day-care patient
+16-Jul-26,General Ward B,30,18,12,
+16-Jul-26,Pediatrics,16,8,8,
+17-Jul-26,I.C.U.,12,12,0,approx - system was down
+17-Jul-26,Medical ICU,10,8,2,
+17-Jul-26,General Ward - A,30,13,17,2 discharges pending paperwork
+17-Jul-26,General Ward B,30,16,,
+17-Jul-26,Pediatrics,16,14,2,
+18-Jul-26,I.C.U.,12,11,1,count taken at 8am
+18-Jul-26,Medical ICU,10,8,2,approx - system was down
+18-Jul-26,General Ward - A,30,12,18,
+18-Jul-26,General Ward B,30,15,15,night shift handover count
+18-Jul-26,Pediatrics,16,11,5,
+20-Jul-26,I.C.U.,12,10,2,2 discharges pending paperwork
+20-Jul-26,Medical ICU,10,9,1,
+20-Jul-26,General Ward - A,30,10,20,
+20-Jul-26,General Ward B,30,16,14,
+20-Jul-26,Pediatrics,16,11,5,approx - system was down
+21-Jul-26,I.C.U.,12,12,0,approx - system was down
+21-Jul-26,Medical ICU,10,8,2,2 discharges pending paperwork
+21-Jul-26,General Ward - A,30,10,20,verified with nursing station
+21-Jul-26,General Ward B,30,14,16,
+21-Jul-26,Pediatrics,16,10,6,approx - system was down
+22-Jul-26,I.C.U.,12,12,0,includes 1 day-care patient
+22-Jul-26,Medical ICU,10,8,2,count taken at 8am
+22-Jul-26,General Ward - A,30,7,23,count taken at 8am
+22-Jul-26,General Ward B,30,13,17,count taken at 8am
+22-Jul-26,Pediatrics,16,10,6,night shift handover count
+23-Jul-26,I.C.U.,12,12,0,2 discharges pending paperwork
+23-Jul-26,Medical ICU,10,9,,
+23-Jul-26,General Ward - A,30,11,,night shift handover count
+23-Jul-26,General Ward B,30,11,19,count taken at 8am
+23-Jul-26,Pediatrics,16,11,5,night shift handover count
+24-Jul-26,I.C.U.,12,12,0,count taken at 8am
+24-Jul-26,Medical ICU,10,5,5,night shift handover count
+24-Jul-26,General Ward - A,30,8,22,2 discharges pending paperwork
+24-Jul-26,General Ward B,30,14,16,
+24-Jul-26,Pediatrics,16,12,4,2 discharges pending paperwork
+25-Jul-26,I.C.U.,12,12,0,count taken at 8am
+25-Jul-26,Medical ICU,10,5,5,
+25-Jul-26,General Ward - A,30,9,21,count taken at 8am
+25-Jul-26,General Ward B,30,12,,verified with nursing station
+25-Jul-26,Pediatrics,16,11,5,
+26-Jul-26,I.C.U.,12,12,0,
+26-Jul-26,Medical ICU,10,6,4,count taken at 8am
+26-Jul-26,General Ward - A,30,6,24,2 discharges pending paperwork
+26-Jul-26,General Ward B,30,13,17,2 discharges pending paperwork
+26-Jul-26,Pediatrics,16,9,7,count taken at 8am
+28-Jul-26,I.C.U.,12,10,2,verified with nursing station
+28-Jul-26,Medical ICU,10,10,0,
+28-Jul-26,General Ward - A,30,4,26,
+28-Jul-26,General Ward B,30,17,13,night shift handover count
+28-Jul-26,Pediatrics,16,11,5,night shift handover count
+29-Jul-26,I.C.U.,12,11,1,2 discharges pending paperwork
+29-Jul-26,Medical ICU,10,10,0,
+29-Jul-26,General Ward - A,30,8,22,verified with nursing station
+29-Jul-26,General Ward B,30,12,18,includes 1 day-care patient
+29-Jul-26,Pediatrics,16,11,5,includes 1 day-care patient
+30-Jul-26,I.C.U.,12,12,0,
+30-Jul-26,Medical ICU,10,10,0,includes 1 day-care patient
+30-Jul-26,General Ward - A,30,10,,includes 1 day-care patient
+30-Jul-26,General Ward B,30,14,16,
+30-Jul-26,Pediatrics,16,14,2,2 discharges pending paperwork
+28-Aug-26,I.C.U.,12,11,1,Synthetic live-day extension; replace with connected source
+28-Aug-26,Medical ICU,10,9,1,Synthetic live-day extension; replace with connected source
+28-Aug-26,General Ward - A,30,25,5,Synthetic live-day extension; replace with connected source
+28-Aug-26,General Ward - B,30,24,6,Synthetic live-day extension; replace with connected source
+28-Aug-26,Paediatrics,16,13,3,Synthetic live-day extension; replace with connected source
