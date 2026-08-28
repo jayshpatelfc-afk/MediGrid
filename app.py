@@ -1,12 +1,20 @@
+import os
 from datetime import datetime
 
 from flask import Flask, jsonify, render_template, request
 
 from database import detect_conflicts, initialize_database
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
 
-db = initialize_database()
+def create_app():
+    app = Flask(__name__, static_folder="static", template_folder="templates")
+    db = initialize_database()
+    app.config["DB"] = db
+    return app
+
+
+app = create_app()
+db = app.config["DB"]
 
 conflicts = [
     {
@@ -143,7 +151,16 @@ def review_conflict(conflict_id):
         return jsonify({"error": "Conflict not found"}), 404
     payload = request.get_json(silent=True) or {}
     reviewed = bool(payload.get("reviewed", True))
-    db.execute("INSERT INTO conflict_reviews (conflict_id, reviewed, reviewed_at) VALUES (?, ?, datetime('now')) ON CONFLICT(conflict_id) DO UPDATE SET reviewed = excluded.reviewed, reviewed_at = excluded.reviewed_at", (conflict_id, int(reviewed)))
+    if os.getenv("DATABASE_URL"):
+        db.execute(
+            "INSERT INTO conflict_reviews (conflict_id, reviewed, reviewed_at) VALUES (%s, %s, CURRENT_TIMESTAMP) ON CONFLICT (conflict_id) DO UPDATE SET reviewed = EXCLUDED.reviewed, reviewed_at = EXCLUDED.reviewed_at",
+            (conflict_id, int(reviewed)),
+        )
+    else:
+        db.execute(
+            "INSERT INTO conflict_reviews (conflict_id, reviewed, reviewed_at) VALUES (?, ?, datetime('now')) ON CONFLICT(conflict_id) DO UPDATE SET reviewed = excluded.reviewed, reviewed_at = excluded.reviewed_at",
+            (conflict_id, int(reviewed)),
+        )
     db.commit()
     item["reviewed"] = reviewed
     return jsonify(public_conflict(item))
@@ -157,6 +174,12 @@ def get_sources():
         source_id = "his" if source["source_name"].startswith("HIS") else "lab" if source["source_name"].startswith("Lab") else "bed"
         source_data.append({"id": source_id, "name": source["source_name"], "status": "Watch" if source_id == "bed" else "Healthy", "rows": source["row_count"], "freshness": source["imported_at"], "completeness": "Source values preserved"})
     return jsonify({"loaded": len(source_data), "sources": source_data})
+
+
+def diff_minutes_sql(end_col, start_col):
+    if os.getenv("DATABASE_URL"):
+        return f"AVG(EXTRACT(EPOCH FROM ({end_col}::timestamp - {start_col}::timestamp)) / 60.0)"
+    return f"AVG((strftime('%s', {end_col}) - strftime('%s', {start_col})) / 60.0)"
 
 
 def trust_metric(name, value, source, freshness, completeness, agreement, reliability, reasons):
@@ -272,10 +295,10 @@ def bottlenecks():
         (reporting_date, reporting_date),
     ).fetchall()
     lab_rows = db.execute(
-        "SELECT department_normalized AS department, COUNT(*) AS orders, "
-        "SUM(resulted_at IS NULL) AS pending, "
-        "ROUND(AVG((julianday(resulted_at) - julianday(ordered_at)) * 24 * 60)) AS avg_minutes "
-        "FROM lab_orders GROUP BY department_normalized ORDER BY avg_minutes DESC",
+        f"SELECT department_normalized AS department, COUNT(*) AS orders, "
+        f"SUM(resulted_at IS NULL) AS pending, "
+        f"ROUND({diff_minutes_sql('resulted_at', 'ordered_at')}) AS avg_minutes "
+        f"FROM lab_orders GROUP BY department_normalized ORDER BY avg_minutes DESC",
     ).fetchall()
     flow_by_department = {row["department"] or "Unassigned": dict(row) for row in flow_rows}
     bottleneck_rows = []
@@ -311,4 +334,4 @@ def bottlenecks():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=os.getenv("FLASK_ENV") == "development")

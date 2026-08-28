@@ -1,68 +1,188 @@
 import csv
+import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:  # pragma: no cover
+    psycopg2 = None
+    RealDictCursor = None
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "db" / "medigrid.db"
 DATA_DIR = BASE_DIR / "data"
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS source_imports (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source_name TEXT NOT NULL,
-    file_name TEXT NOT NULL,
-    imported_at TEXT NOT NULL,
-    row_count INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS his_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source_import_id INTEGER NOT NULL,
-    raw_row TEXT NOT NULL,
-    patient_id TEXT NOT NULL,
-    admission_at TEXT,
-    discharge_at TEXT,
-    ward_raw TEXT,
-    ward_normalized TEXT,
-    department TEXT,
-    age INTEGER,
-    gender TEXT
-);
-CREATE TABLE IF NOT EXISTS lab_orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source_import_id INTEGER NOT NULL,
-    raw_row TEXT NOT NULL,
-    order_id TEXT NOT NULL,
-    patient_id TEXT NOT NULL,
-    test_name TEXT,
-    ordered_at TEXT,
-    collected_at TEXT,
-    resulted_at TEXT,
-    priority TEXT,
-    department_raw TEXT,
-    department_normalized TEXT
-);
-CREATE TABLE IF NOT EXISTS bed_snapshots (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source_import_id INTEGER NOT NULL,
-    raw_row TEXT NOT NULL,
-    snapshot_date TEXT NOT NULL,
-    ward_raw TEXT,
-    ward_normalized TEXT,
-    total_beds INTEGER,
-    occupied INTEGER,
-    available INTEGER,
-    remarks TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_his_patient ON his_events(patient_id);
-CREATE INDEX IF NOT EXISTS idx_lab_patient ON lab_orders(patient_id);
-CREATE INDEX IF NOT EXISTS idx_bed_date ON bed_snapshots(snapshot_date);
-CREATE TABLE IF NOT EXISTS conflict_reviews (
-    conflict_id TEXT PRIMARY KEY,
-    reviewed INTEGER NOT NULL DEFAULT 0,
-    reviewed_at TEXT NOT NULL
-);
-"""
+
+def is_postgres():
+    return bool(os.getenv("DATABASE_URL"))
+
+
+class DatabaseAdapter:
+    def __init__(self, connection):
+        self.conn = connection
+        self._cursor = None
+
+    def execute(self, query, params=()):
+        if is_postgres():
+            self._cursor = self.conn.cursor(cursor_factory=RealDictCursor)
+            self._cursor.execute(query, params)
+            return self._cursor
+        self._cursor = self.conn.execute(query, params)
+        return self._cursor
+
+    def fetchone(self):
+        return self._cursor.fetchone() if self._cursor is not None else None
+
+    def fetchall(self):
+        return self._cursor.fetchall() if self._cursor is not None else []
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+    def __getattr__(self, item):
+        return getattr(self.conn, item)
+
+
+def schema_statements():
+    if is_postgres():
+        return [
+            """
+            CREATE TABLE IF NOT EXISTS source_imports (
+                id BIGSERIAL PRIMARY KEY,
+                source_name TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                imported_at TIMESTAMPTZ NOT NULL,
+                row_count INTEGER NOT NULL
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS his_events (
+                id BIGSERIAL PRIMARY KEY,
+                source_import_id BIGINT NOT NULL,
+                raw_row TEXT NOT NULL,
+                patient_id TEXT NOT NULL,
+                admission_at TIMESTAMPTZ,
+                discharge_at TIMESTAMPTZ,
+                ward_raw TEXT,
+                ward_normalized TEXT,
+                department TEXT,
+                age INTEGER,
+                gender TEXT
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS lab_orders (
+                id BIGSERIAL PRIMARY KEY,
+                source_import_id BIGINT NOT NULL,
+                raw_row TEXT NOT NULL,
+                order_id TEXT NOT NULL,
+                patient_id TEXT NOT NULL,
+                test_name TEXT,
+                ordered_at TIMESTAMPTZ,
+                collected_at TIMESTAMPTZ,
+                resulted_at TIMESTAMPTZ,
+                priority TEXT,
+                department_raw TEXT,
+                department_normalized TEXT
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS bed_snapshots (
+                id BIGSERIAL PRIMARY KEY,
+                source_import_id BIGINT NOT NULL,
+                raw_row TEXT NOT NULL,
+                snapshot_date DATE NOT NULL,
+                ward_raw TEXT,
+                ward_normalized TEXT,
+                total_beds INTEGER,
+                occupied INTEGER,
+                available INTEGER,
+                remarks TEXT
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_his_patient ON his_events(patient_id);",
+            "CREATE INDEX IF NOT EXISTS idx_lab_patient ON lab_orders(patient_id);",
+            "CREATE INDEX IF NOT EXISTS idx_bed_date ON bed_snapshots(snapshot_date);",
+            """
+            CREATE TABLE IF NOT EXISTS conflict_reviews (
+                conflict_id TEXT PRIMARY KEY,
+                reviewed INTEGER NOT NULL DEFAULT 0,
+                reviewed_at TIMESTAMPTZ NOT NULL
+            );
+            """,
+        ]
+    return [
+        """
+        CREATE TABLE IF NOT EXISTS source_imports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_name TEXT NOT NULL,
+            file_name TEXT NOT NULL,
+            imported_at TEXT NOT NULL,
+            row_count INTEGER NOT NULL
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS his_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_import_id INTEGER NOT NULL,
+            raw_row TEXT NOT NULL,
+            patient_id TEXT NOT NULL,
+            admission_at TEXT,
+            discharge_at TEXT,
+            ward_raw TEXT,
+            ward_normalized TEXT,
+            department TEXT,
+            age INTEGER,
+            gender TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS lab_orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_import_id INTEGER NOT NULL,
+            raw_row TEXT NOT NULL,
+            order_id TEXT NOT NULL,
+            patient_id TEXT NOT NULL,
+            test_name TEXT,
+            ordered_at TEXT,
+            collected_at TEXT,
+            resulted_at TEXT,
+            priority TEXT,
+            department_raw TEXT,
+            department_normalized TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS bed_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_import_id INTEGER NOT NULL,
+            raw_row TEXT NOT NULL,
+            snapshot_date TEXT NOT NULL,
+            ward_raw TEXT,
+            ward_normalized TEXT,
+            total_beds INTEGER,
+            occupied INTEGER,
+            available INTEGER,
+            remarks TEXT
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_his_patient ON his_events(patient_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lab_patient ON lab_orders(patient_id);",
+        "CREATE INDEX IF NOT EXISTS idx_bed_date ON bed_snapshots(snapshot_date);",
+        """
+        CREATE TABLE IF NOT EXISTS conflict_reviews (
+            conflict_id TEXT PRIMARY KEY,
+            reviewed INTEGER NOT NULL DEFAULT 0,
+            reviewed_at TEXT NOT NULL
+        );
+        """,
+    ]
 
 
 def clean(value):
@@ -109,11 +229,19 @@ def import_csv(conn, source_name, path, importer):
     imported_at = datetime.now().isoformat(timespec="seconds")
     with path.open(newline="", encoding="utf-8") as csv_file:
         rows = list(csv.DictReader(csv_file))
-    cursor = conn.execute(
-        "INSERT INTO source_imports (source_name, file_name, imported_at, row_count) VALUES (?, ?, ?, ?)",
-        (source_name, path.name, imported_at, len(rows)),
-    )
-    importer(conn, cursor.lastrowid, rows)
+    if is_postgres():
+        cursor = conn.execute(
+            "INSERT INTO source_imports (source_name, file_name, imported_at, row_count) VALUES (%s, %s, %s, %s) RETURNING id",
+            (source_name, path.name, imported_at, len(rows)),
+        )
+        import_id = cursor.fetchone()["id"]
+    else:
+        cursor = conn.execute(
+            "INSERT INTO source_imports (source_name, file_name, imported_at, row_count) VALUES (?, ?, ?, ?)",
+            (source_name, path.name, imported_at, len(rows)),
+        )
+        import_id = cursor.lastrowid
+    importer(conn, import_id, rows)
     return len(rows)
 
 
@@ -185,12 +313,22 @@ def detect_conflicts(conn):
 
 
 def initialize_database(force=False):
-    if force and DB_PATH.exists():
+    if force and not is_postgres() and DB_PATH.exists():
         DB_PATH.unlink()
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.executescript(SCHEMA)
-    if conn.execute("SELECT COUNT(*) FROM source_imports").fetchone()[0] == 0:
+
+    if is_postgres():
+        if psycopg2 is None:
+            raise RuntimeError("psycopg2 is required when DATABASE_URL is configured.")
+        conn = DatabaseAdapter(psycopg2.connect(os.environ["DATABASE_URL"], sslmode="require"))
+    else:
+        conn = DatabaseAdapter(sqlite3.connect(DB_PATH, check_same_thread=False))
+        conn.conn.row_factory = sqlite3.Row
+
+    for statement in schema_statements():
+        conn.execute(statement)
+    conn.commit()
+
+    if conn.execute("SELECT COUNT(*) AS total FROM source_imports").fetchone()["total"] == 0:
         import_csv(conn, "HIS admissions/discharges", DATA_DIR / "his_admissions_discharges.csv", import_his)
         import_csv(conn, "Lab order-to-result", DATA_DIR / "lab_order_to_result.csv", import_lab)
         import_csv(conn, "Manual bed occupancy", DATA_DIR / "bed_occupancy_manual.csv", import_beds)
