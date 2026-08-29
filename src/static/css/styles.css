@@ -38,8 +38,6 @@ body[data-theme="dark"] .date-filter input,
 body[data-theme="dark"] .stepper,
 body[data-theme="dark"] .step-btn,
 body[data-theme="dark"] .fresh-line div,
-body[data-theme="dark"] .vacancy-track,
-body[data-theme="dark"] .vacant,
 body[data-theme="dark"] .metric-line,
 body[data-theme="dark"] .insight,
 body[data-theme="dark"] .button.secondary,
@@ -55,6 +53,26 @@ body[data-theme="dark"] .table-row {
   background:var(--surface);
   border-color:var(--line);
   color:var(--ink);
+}
+body[data-theme="dark"] .vacancy-track {
+  background:rgba(14, 31, 30, 0.92);
+  border:1px solid rgba(150, 180, 171, 0.22);
+}
+body[data-theme="dark"] .vacant {
+  background:rgba(140, 175, 167, 0.22);
+}
+body[data-theme="dark"] .vacancy-count,
+body[data-theme="dark"] .vacancy-total span,
+body[data-theme="dark"] .vacancy-label small {
+  color:var(--muted);
+}
+body[data-theme="dark"] .bed-cell {
+  background:rgba(239, 116, 123, 0.9);
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,0.12);
+}
+body[data-theme="dark"] .bed-cell.vacant {
+  background:rgba(163, 203, 193, 0.18);
+  box-shadow:inset 0 0 0 1px rgba(163, 184, 177, 0.25);
 }
 body[data-theme="dark"] .page-heading h1,
 body[data-theme="dark"] .page-heading h2,

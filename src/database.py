@@ -12,8 +12,33 @@ except ImportError:  # pragma: no cover
     RealDictCursor = None
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "db" / "medigrid.db"
 DATA_DIR = BASE_DIR / "data"
+
+
+def resolve_database_path():
+    candidates = [BASE_DIR / "db" / "medigrid.db", BASE_DIR / "medigrid.db"]
+    best_path = candidates[0]
+    best_count = -1
+
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        try:
+            with sqlite3.connect(candidate) as connection:
+                row = connection.execute("SELECT COUNT(*) AS total FROM sqlite_master WHERE type='table' AND name='source_imports'").fetchone()
+                if row is None or row[0] == 0:
+                    continue
+                source_count = connection.execute("SELECT COUNT(*) FROM source_imports").fetchone()[0]
+                if source_count > best_count:
+                    best_count = source_count
+                    best_path = candidate
+        except sqlite3.DatabaseError:
+            continue
+
+    return best_path
+
+
+DB_PATH = resolve_database_path()
 
 
 def is_postgres():

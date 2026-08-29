@@ -88,8 +88,8 @@ def snapshot_categories(snapshot_date):
     rows = db.execute(
         "SELECT ward_normalized, SUM(total_beds) AS total, SUM(occupied) AS occupied, "
         "SUM(COALESCE(available, total_beds - occupied)) AS available "
-        "FROM bed_snapshots WHERE snapshot_date = ? GROUP BY ward_normalized ORDER BY ward_normalized",
-        (snapshot_date,),
+        "FROM bed_snapshots WHERE substr(snapshot_date, 1, 10) = ? GROUP BY ward_normalized ORDER BY ward_normalized",
+        (snapshot_date[:10] if len(snapshot_date) > 10 else snapshot_date,),
     ).fetchall()
     class_names = {"ICU": "icu", "MICU": "icu", "Pediatrics": "peds", "General Ward A": "general", "General Ward B": "general"}
     return [
@@ -124,12 +124,19 @@ def import_summary():
 
 @app.get("/api/bed-types")
 def get_bed_types():
-    snapshot_date = latest_snapshot_date()
+    requested_date = request.args.get("date") or latest_snapshot_date()
+    snapshot_date = requested_date[:10] if len(requested_date) > 10 else requested_date
     totals = db.execute(
         "SELECT SUM(total_beds) AS total, SUM(occupied) AS occupied, SUM(COALESCE(available, total_beds - occupied)) AS available "
-        "FROM bed_snapshots WHERE snapshot_date = ?", (snapshot_date,)
+        "FROM bed_snapshots WHERE substr(snapshot_date, 1, 10) = ?", (snapshot_date,)
     ).fetchone()
-    return jsonify({"reportingDate": snapshot_date[:10], "totalBeds": totals["total"] or 0, "occupiedBeds": totals["occupied"] or 0, "vacantBeds": totals["available"] or 0, "categories": snapshot_categories(snapshot_date)})
+    return jsonify({"reportingDate": snapshot_date, "totalBeds": totals["total"] or 0, "occupiedBeds": totals["occupied"] or 0, "vacantBeds": totals["available"] or 0, "categories": snapshot_categories(snapshot_date)})
+
+
+@app.get("/api/snapshot-dates")
+def get_snapshot_dates():
+    dates = db.execute("SELECT DISTINCT substr(snapshot_date, 1, 10) AS snapshot_date FROM bed_snapshots ORDER BY snapshot_date").fetchall()
+    return jsonify({"dates": [row["snapshot_date"] for row in dates]})
 
 
 @app.get("/api/conflicts")
@@ -202,20 +209,21 @@ def trust_metric(name, value, source, freshness, completeness, agreement, reliab
 
 @app.get("/api/trust-score")
 def trust_score():
-    latest_snapshot = latest_snapshot_date()
-    latest_day = latest_snapshot[:10]
+    requested_date = request.args.get("date") or latest_snapshot_date()
+    snapshot_date = requested_date[:10] if len(requested_date) > 10 else requested_date
+    latest_day = snapshot_date
     bed_totals = db.execute(
         "SELECT SUM(total_beds) AS capacity, SUM(occupied) AS occupied, SUM(COALESCE(available, total_beds - occupied)) AS available "
-        "FROM bed_snapshots WHERE snapshot_date = ?", (latest_snapshot,)
+        "FROM bed_snapshots WHERE substr(snapshot_date, 1, 10) = ?", (snapshot_date,)
     ).fetchone()
-    bed_rows = db.execute("SELECT COUNT(*) AS total, SUM(available IS NULL) AS blanks FROM bed_snapshots").fetchone()
+    bed_rows = db.execute("SELECT COUNT(*) AS total, SUM(available IS NULL) AS blanks FROM bed_snapshots WHERE substr(snapshot_date, 1, 10) = ?", (snapshot_date,)).fetchone()
     census_conflicts = sum(item["id"].startswith("census-") for item in detect_conflicts(db))
-    bed_agreement = max(0, round(100 - (census_conflicts / max(1, len(snapshot_categories(latest_snapshot))) * 30)))
+    bed_agreement = max(0, round(100 - (census_conflicts / max(1, len(snapshot_categories(snapshot_date))) * 30)))
     lab_rows = db.execute("SELECT COUNT(*) AS total, SUM(ordered_at IS NULL OR resulted_at IS NULL) AS incomplete FROM lab_orders").fetchone()
     orphan_count = db.execute("SELECT COUNT(DISTINCT l.patient_id) AS value FROM lab_orders l LEFT JOIN his_events h ON h.patient_id = l.patient_id WHERE h.patient_id IS NULL").fetchone()["value"]
     lab_completeness = round(100 * (lab_rows["total"] - (lab_rows["incomplete"] or 0)) / max(1, lab_rows["total"]))
     lab_agreement = round(100 - (orphan_count / max(1, lab_rows["total"]) * 100))
-    his_rows = db.execute("SELECT COUNT(*) AS total, SUM(admission_at IS NULL AND discharge_at IS NULL) AS incomplete FROM his_events").fetchone()
+    his_rows = db.execute("SELECT COUNT(*) AS total, SUM(admission_at IS NULL AND discharge_at IS NULL) AS incomplete FROM his_events WHERE substr(admission_at, 1, 10) = ? OR substr(discharge_at, 1, 10) = ?", (latest_day, latest_day)).fetchone()
     his_completeness = round(100 * (his_rows["total"] - (his_rows["incomplete"] or 0)) / max(1, his_rows["total"]))
     return jsonify({
         "reportingDate": latest_day,
@@ -232,12 +240,13 @@ def trust_score():
 @app.get("/api/dashboard")
 def dashboard():
     detected = detect_conflicts(db)
-    latest_snapshot = latest_snapshot_date()
+    requested_date = request.args.get("date") or latest_snapshot_date()
+    snapshot_date = requested_date[:10] if len(requested_date) > 10 else requested_date
     bed_totals = db.execute(
-        "SELECT SUM(total_beds) AS capacity, SUM(occupied) AS occupied, SUM(COALESCE(available, total_beds - occupied)) AS available FROM bed_snapshots WHERE snapshot_date = ?",
-        (latest_snapshot,),
+        "SELECT SUM(total_beds) AS capacity, SUM(occupied) AS occupied, SUM(COALESCE(available, total_beds - occupied)) AS available FROM bed_snapshots WHERE substr(snapshot_date, 1, 10) = ?",
+        (snapshot_date,),
     ).fetchone()
-    latest_day = latest_snapshot[:10]
+    latest_day = snapshot_date
     admissions = db.execute("SELECT COUNT(*) AS value FROM his_events WHERE substr(admission_at, 1, 10) = ?", (latest_day,)).fetchone()["value"]
     discharges = db.execute("SELECT COUNT(*) AS value FROM his_events WHERE substr(discharge_at, 1, 10) = ?", (latest_day,)).fetchone()["value"]
     lab_metrics = db.execute(
@@ -263,7 +272,7 @@ def dashboard():
         "openConflicts": open_conflicts,
         "trustScores": trust_by_name,
         "alerts": alerts,
-        "updatedAt": latest_snapshot,  # use the latest loaded snapshot date rather than the machine clock
+        "updatedAt": snapshot_date,
     })
 
 

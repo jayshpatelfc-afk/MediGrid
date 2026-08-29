@@ -11,6 +11,8 @@ const toast = document.getElementById('toast');
 const themeToggle = document.getElementById('theme-toggle');
 let patientEvents = [];
 let currentDashboard = { occupiedBeds: { value: 0, capacity: 0, available: 0 } };
+let availableSnapshotDates = [];
+let snapshotIndex = 0;
 
 function applyTheme(theme) {
   const selectedTheme = theme === 'dark' ? 'dark' : 'light';
@@ -141,9 +143,16 @@ function renderPatientFlow(filter = flowFilter) {
   if (insight) insight.textContent = `${admissions.reduce((sum, value) => sum + value, 0)} admissions and ${discharges.reduce((sum, value) => sum + value, 0)} discharges in the selected reporting window.`;
 }
 
+function getSelectedSnapshotDate() {
+  if (availableSnapshotDates.length) {
+    return availableSnapshotDates[snapshotIndex % availableSnapshotDates.length];
+  }
+  return currentDashboard.reportingDate || new Date().toISOString().slice(0, 10);
+}
+
 async function loadPatientFlow() {
   try {
-    const date = document.getElementById('flow-date').value;
+    const date = document.getElementById('flow-date').value || getSelectedSnapshotDate();
     const response = await fetch(`/api/patient-flow?date=${encodeURIComponent(date)}`);
     if (!response.ok) throw new Error('Patient flow request failed');
     const data = await response.json();
@@ -159,7 +168,8 @@ async function loadPatientFlow() {
 
 async function loadBottlenecks() {
   try {
-    const response = await fetch('/api/bottlenecks');
+    const date = getSelectedSnapshotDate();
+    const response = await fetch(`/api/bottlenecks?date=${encodeURIComponent(date)}`);
     if (!response.ok) throw new Error('Bottleneck request failed');
     const data = await response.json();
     document.getElementById('bottleneck-date').textContent = `Reporting date: ${formatDate(data.reportingDate)}`;
@@ -178,7 +188,8 @@ async function loadBottlenecks() {
 
 async function loadTrustScores() {
   try {
-    const response = await fetch('/api/trust-score');
+    const date = getSelectedSnapshotDate();
+    const response = await fetch(`/api/trust-score?date=${encodeURIComponent(date)}`);
     if (!response.ok) throw new Error('Trust score request failed');
     const data = await response.json();
     document.getElementById('trust-method-text').textContent = data.method;
@@ -230,7 +241,19 @@ async function loadApiData() {
   if (liveRefreshInProgress) return false;
   liveRefreshInProgress = true;
   try {
-    const [conflictResponse, bedResponse, dashboardResponse, sourceResponse] = await Promise.all([fetch('/api/conflicts'), fetch('/api/bed-types'), fetch('/api/dashboard'), fetch('/api/sources')]);
+    const snapshotDatesResponse = await fetch('/api/snapshot-dates');
+    const snapshotDatesData = snapshotDatesResponse.ok ? await snapshotDatesResponse.json() : { dates: [] };
+    if (snapshotDatesData.dates && snapshotDatesData.dates.length) {
+      availableSnapshotDates = snapshotDatesData.dates;
+      snapshotIndex = availableSnapshotDates.length - 1;
+    }
+    const selectedDate = getSelectedSnapshotDate();
+    const [conflictResponse, bedResponse, dashboardResponse, sourceResponse] = await Promise.all([
+      fetch('/api/conflicts'),
+      fetch(`/api/bed-types?date=${encodeURIComponent(selectedDate)}`),
+      fetch(`/api/dashboard?date=${encodeURIComponent(selectedDate)}`),
+      fetch('/api/sources')
+    ]);
     if (!conflictResponse.ok || !bedResponse.ok || !dashboardResponse.ok || !sourceResponse.ok) throw new Error('API data request failed');
     const conflictData = await conflictResponse.json();
     const bedData = await bedResponse.json();
@@ -269,7 +292,10 @@ async function loadApiData() {
     renderQueue();
     renderOverviewReview();
     renderBedMap();
+    renderBedChart();
     renderUnitList();
+    loadBottlenecks();
+    loadTrustScores();
     updateSimulation();
     updateLiveClock();
     return true;
@@ -333,6 +359,33 @@ function exportBrief() {
   URL.revokeObjectURL(link.href);
 }
 
+function renderBedChart() {
+  const chart = document.querySelector('.vacancy-chart');
+  if (!chart) return;
+  chart.innerHTML = bedTypes.map(type => {
+    const occupied = Math.max(0, (type.total || 0) - (type.vacant || 0));
+    const occupancyRate = type.total ? (occupied / type.total) * 100 : 0;
+    const fillWidth = Math.max(0, Math.min(100, occupancyRate));
+    return `
+      <div class="vacancy-row">
+        <div class="vacancy-label">
+          <span class="vacancy-swatch ${type.className}"></span>
+          <div>
+            <strong>${type.name}</strong>
+            <small>${occupied} occupied / ${type.total} beds</small>
+          </div>
+        </div>
+        <div class="vacancy-track">
+          <span class="filled ${type.className}-fill" style="width:${fillWidth}%"></span>
+          <span class="vacant" style="width:${100 - fillWidth}%"></span>
+        </div>
+        <strong class="vacancy-count">${type.vacant} free</strong>
+      </div>`;
+  }).join('');
+  chart.hidden = false;
+  document.querySelector('.bed-map').hidden = true;
+}
+
 function renderBedMap() {
   const map = document.querySelector('.bed-map');
   map.innerHTML = bedTypes.map(type => {
@@ -354,14 +407,30 @@ function renderUnitList() {
 document.querySelectorAll('[data-bed-view]').forEach(button => button.addEventListener('click', () => {
   const mapView = button.dataset.bedView === 'map';
   document.querySelectorAll('[data-bed-view]').forEach(item => item.classList.toggle('active', item === button));
-  document.querySelector('.vacancy-chart').hidden = mapView;
-  document.querySelector('.bed-map').hidden = !mapView;
+  if (mapView) {
+    renderBedMap();
+  } else {
+    renderBedChart();
+  }
 }));
 
 navItems.forEach(item => item.addEventListener('click', () => showView(item.dataset.view)));
 document.querySelectorAll('[data-view-target]').forEach(button => button.addEventListener('click', () => showView(button.dataset.viewTarget)));
-document.getElementById('refresh-btn').addEventListener('click', async () => { await loadApiData(); await loadPatientFlow(); showToast('Brief refreshed from latest available sources.'); });
-document.getElementById('controls-refresh').addEventListener('click', async () => { await loadApiData(); showToast('Bed inventory refreshed from the latest occupancy snapshot.'); });
+document.getElementById('refresh-btn').addEventListener('click', async () => {
+  if (availableSnapshotDates.length) {
+    snapshotIndex = (snapshotIndex + 1) % availableSnapshotDates.length;
+  }
+  await loadApiData();
+  await loadPatientFlow();
+  showToast(`Brief refreshed: ${currentDashboard.reportingDate}`);
+});
+document.getElementById('controls-refresh').addEventListener('click', async () => {
+  if (availableSnapshotDates.length) {
+    snapshotIndex = (snapshotIndex + 1) % availableSnapshotDates.length;
+  }
+  await loadApiData();
+  showToast(`Bed inventory refreshed: ${currentDashboard.reportingDate}`);
+});
 document.getElementById('flow-refresh').addEventListener('click', async () => { await loadPatientFlow(); showToast('Admissions and discharge events refreshed.'); });
 document.getElementById('bottlenecks-refresh').addEventListener('click', async () => { await loadBottlenecks(); showToast('Flow bottlenecks refreshed.'); });
 document.getElementById('trust-refresh').addEventListener('click', async () => { await loadTrustScores(); showToast('Operational trust scores refreshed.'); });

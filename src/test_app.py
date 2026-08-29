@@ -40,6 +40,22 @@ class PrototypeApiTests(unittest.TestCase):
         self.assertTrue(data['departments'])
         self.assertTrue(all({'department', 'netFlow', 'labAverage', 'severity'} <= set(row) for row in data['departments']))
 
+    def test_dashboard_can_switch_between_snapshot_dates(self):
+        dates = app.config['DB'].execute('SELECT DISTINCT substr(snapshot_date, 1, 10) AS snapshot_date FROM bed_snapshots ORDER BY snapshot_date').fetchall()
+        self.assertGreater(len(dates), 1)
+        first = self.client.get(f"/api/dashboard?date={dates[0]['snapshot_date']}").get_json()
+        second = self.client.get(f"/api/dashboard?date={dates[1]['snapshot_date']}").get_json()
+        self.assertEqual(first['reportingDate'], dates[0]['snapshot_date'])
+        self.assertEqual(second['reportingDate'], dates[1]['snapshot_date'])
+        self.assertNotEqual(first['occupiedBeds']['available'], second['occupiedBeds']['available'])
+
+    def test_trust_scores_follow_selected_snapshot_date(self):
+        response = self.client.get('/api/trust-score?date=2026-07-30')
+        data = response.get_json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['reportingDate'], '2026-07-30')
+        self.assertTrue(all(metric['score'] >= 0 for metric in data['metrics']))
+
     def test_trust_scores_explain_metric_confidence(self):
         response = self.client.get('/api/trust-score')
         data = response.get_json()
