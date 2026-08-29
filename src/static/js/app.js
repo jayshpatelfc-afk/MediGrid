@@ -332,7 +332,7 @@ function updateLiveClock() {
   const overviewDate = document.getElementById('overview-date');
   const sourceDate = document.querySelector('.source-date strong');
 
-  if (liveStatus) liveStatus.textContent = `Live · checked ${timeText}`;
+  if (liveStatus) liveStatus.textContent = `Checked ${timeText}`;
   if (pipelineChecked) pipelineChecked.textContent = `Checked ${timeText}`;
   if (latestSourceTime) latestSourceTime.textContent = `Checked ${timeText} · ${dateText}`;
   if (liveDate) liveDate.textContent = dateText;
