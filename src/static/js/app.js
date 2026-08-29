@@ -466,3 +466,49 @@ window.setInterval(async () => {
   const loaded = await loadApiData();
   if (loaded) await loadPatientFlow();
 }, 30000);
+
+const extractModal = document.getElementById("extract-modal");
+const extractClose = document.getElementById("extract-close");
+const extractTitle = document.getElementById("extract-title");
+const extractThead = document.getElementById("extract-thead");
+const extractTbody = document.getElementById("extract-tbody");
+
+if (extractClose) {
+  extractClose.addEventListener("click", () => {
+    extractModal.hidden = true;
+  });
+}
+
+if (extractModal) {
+  extractModal.addEventListener("click", (e) => {
+    if (e.target === extractModal) extractModal.hidden = true;
+  });
+}
+
+document.querySelectorAll(".view-extract-btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const source = btn.dataset.source;
+    extractTitle.textContent = `${source.toUpperCase()} Data Extract`;
+    extractThead.innerHTML = "";
+    extractTbody.innerHTML = "<tr><td>Loading...</td></tr>";
+    extractModal.hidden = false;
+
+    try {
+      const response = await fetch(`/api/extract/${source}`);
+      if (!response.ok) throw new Error("Failed to fetch extract");
+      const data = await response.json();
+      
+      if (data.rows && data.rows.length > 0) {
+        const columns = Object.keys(data.rows[0]);
+        extractThead.innerHTML = `<tr>${columns.map(col => `<th>${col}</th>`).join("")}</tr>`;
+        extractTbody.innerHTML = data.rows.map(row => `<tr>${columns.map(col => `<td>${row[col] !== null ? row[col] : ""}</td>`).join("")}</tr>`).join("");
+      } else {
+        extractTbody.innerHTML = "<tr><td>No data available</td></tr>";
+      }
+    } catch (error) {
+      console.error(error);
+      extractTbody.innerHTML = "<tr><td>Error loading data</td></tr>";
+    }
+  });
+});
+

@@ -183,6 +183,25 @@ def get_sources():
     return jsonify({"loaded": len(source_data), "sources": source_data})
 
 
+@app.get("/api/extract/<source_id>")
+def get_extract(source_id):
+    if source_id == "his":
+        rows = db.execute("SELECT * FROM his_events ORDER BY admission_at DESC").fetchall()
+    elif source_id == "lab":
+        rows = db.execute("SELECT * FROM lab_orders ORDER BY ordered_at DESC").fetchall()
+    elif source_id == "bed":
+        rows = db.execute("SELECT * FROM bed_snapshots ORDER BY snapshot_date DESC").fetchall()
+    else:
+        return jsonify({"error": "Unknown source"}), 404
+    
+    if not rows:
+        return jsonify({"columns": [], "rows": []})
+        
+    columns = list(dict(rows[0]).keys())
+    data = [dict(row) for row in rows]
+    return jsonify({"columns": columns, "rows": data})
+
+
 def diff_minutes_sql(end_col, start_col):
     if os.getenv("DATABASE_URL"):
         return f"AVG(EXTRACT(EPOCH FROM ({end_col}::timestamp - {start_col}::timestamp)) / 60.0)"
